@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>เช็กสถานะงานซ่อม | OnsiteGoFix</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f4f0; --card: #ffffff; --text: #1d1c1a; --muted: #62615c; --faint: #97958f;
+    --line: #e3e1da; --line-strong: #cfccc3;
+    --accent: #1f5fa8; --accent-bg: #e6f0fb;
+    --ok: #2e7d3a; --ok-bg: #e6f3e2;
+    --warn: #b86a0a; --warn-text: #8a4f06; --warn-bg: #fbefd9;
+    --danger: #b3261e; --danger-bg: #fbe9e7;
+    --on-fill: #ffffff;
+    --radius: 14px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151514; --card: #1f1f1d; --text: #ecebe6; --muted: #aeaca5; --faint: #7d7b75;
+      --line: #34332f; --line-strong: #4a4943;
+      --accent: #7fb2ec; --accent-bg: #1a2c42;
+      --ok: #6fc07b; --ok-bg: #1c3320;
+      --warn: #efae4f; --warn-text: #f3c27a; --warn-bg: #3a2a10;
+      --danger: #f08a80; --danger-bg: #3d1c19;
+      --on-fill: #10161d;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+    font-family: "IBM Plex Sans Thai", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px; line-height: 1.6;
+  }
+  .wrap { max-width: 520px; margin: 0 auto; padding: 40px 16px 32px; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .logo { width: 36px; height: 36px; border-radius: 10px; background: var(--accent); color: var(--on-fill); display: grid; place-items: center; flex-shrink: 0; }
+  .brand-name { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+  .lead { margin: 6px 0 24px; color: var(--muted); }
+
+  .demo { background: var(--accent-bg); color: var(--accent); border-radius: 10px; padding: 10px 14px; font-size: 14px; margin-bottom: 16px; }
+  .demo button { font: inherit; font-size: 13px; background: transparent; border: 1px solid currentColor; color: inherit; border-radius: 999px; padding: 1px 10px; margin: 4px 6px 0 0; cursor: pointer; font-family: "IBM Plex Mono", ui-monospace, monospace; }
+
+  label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+  .row { display: flex; gap: 8px; }
+  input {
+    flex: 1; min-width: 0; height: 48px; padding: 0 14px; font-size: 18px; letter-spacing: 0.04em;
+    font-family: "IBM Plex Mono", ui-monospace, monospace; color: var(--text);
+    background: var(--card); border: 1px solid var(--line-strong); border-radius: 10px; outline: none;
+  }
+  input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
+  input[aria-invalid="true"] { border-color: var(--danger); }
+  .go {
+    height: 48px; padding: 0 20px; font: inherit; font-weight: 500; color: var(--on-fill); background: var(--accent);
+    border: 0; border-radius: 10px; cursor: pointer; white-space: nowrap;
+  }
+  .go:hover { filter: brightness(1.08); }
+  .go:focus-visible { outline: 3px solid var(--accent-bg); outline-offset: 2px; }
+  .go[aria-busy="true"] { opacity: 0.7; cursor: progress; }
+  .err { color: var(--danger); font-size: 14px; margin: 6px 0 0; min-height: 0; }
+  .err:empty { display: none; }
+  .hint { color: var(--faint); font-size: 13px; margin: 6px 0 0; }
+
+  #out { margin-top: 24px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; }
+  .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .title { margin: 0; font-size: 17px; font-weight: 600; line-height: 1.45; }
+  .case { margin: 2px 0 0; font-size: 13px; color: var(--faint); font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  .badge { font-size: 13px; font-weight: 500; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .t-accent { background: var(--accent-bg); color: var(--accent); }
+  .t-warn { background: var(--warn-bg); color: var(--warn-text); }
+  .t-ok { background: var(--ok-bg); color: var(--ok); }
+  .t-muted { background: var(--line); color: var(--muted); }
+
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); margin: 20px 0 6px; padding: 0; list-style: none; }
+  .step { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--faint); text-align: center; }
+  .step::before { content: ""; position: absolute; top: 12px; right: 50%; width: 100%; height: 2px; background: var(--line); z-index: 0; }
+  .step:first-child::before { display: none; }
+  .dot { position: relative; z-index: 1; width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--line-strong); background: var(--card); display: grid; place-items: center; color: var(--on-fill); }
+  .step.done::before, .step.now::before { background: var(--ok); }
+  .step.done .dot { background: var(--ok); border-color: var(--ok); }
+  .step.done { color: var(--muted); }
+  .step.now { color: var(--text); font-weight: 500; }
+  .step.now .dot { border-width: 0; }
+  .now-accent .dot { background: var(--accent); }
+  .now-warn .dot { background: var(--warn); }
+  .now-ok .dot { background: var(--ok); }
+
+  .meta { margin: 14px 0 0; padding-top: 10px; border-top: 1px solid var(--line); }
+  .meta div { display: flex; justify-content: space-between; gap: 16px; padding: 5px 0; font-size: 14px; }
+  .meta dt { color: var(--muted); flex-shrink: 0; }
+  .meta dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+
+  .empty { text-align: center; padding: 26px 20px; }
+  .empty-icon { width: 44px; height: 44px; margin: 0 auto 10px; border-radius: 50%; display: grid; place-items: center; background: var(--line); color: var(--muted); }
+  .empty h2 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
+  .empty p { margin: 0; color: var(--muted); font-size: 14px; }
+  .note { margin: 12px 0 0; font-size: 14px; color: var(--muted); }
+
+  footer { margin-top: 40px; font-size: 12px; color: var(--faint); text-align: center; }
+  @media (max-width: 380px) { .go { padding: 0 14px; } .card { padding: 16px; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="brand">
+    <div class="logo" aria-hidden="true">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10h3v-3l-3.5 -3.5a6 6 0 0 1 8 8l6 6a2 2 0 0 1 -3 3l-6 -6a6 6 0 0 1 -8 -8l3.5 3.5"/></svg>
+    </div>
+    <span class="brand-name">OnsiteGoFix</span>
+  </div>
+  <p class="lead">เช็กสถานะงานซ่อมด้วยเลข Case</p>
+
+  <div id="demo" class="demo" hidden>
+    โหมดตัวอย่าง ยังไม่ได้เชื่อมกับชีต ลองกดเลขด้านล่าง<br>
+    <button type="button" data-case="2601310877278">2601310877278</button><button type="button" data-case="2609270000001">2609270000001</button><button type="button" data-case="2603120938625">2603120938625</button>
+  </div>
+
+  <form id="form" novalidate>
+    <label for="q">เลข Case</label>
+    <div class="row">
+      <input id="q" name="case" inputmode="numeric" autocomplete="off" placeholder="2603120938625" aria-describedby="err hint">
+      <button class="go" id="go" type="submit">ค้นหา</button>
+    </div>
+    <p class="err" id="err" role="alert"></p>
+    <p class="hint" id="hint">ใส่เฉพาะตัวเลข ไม่ต้องมีช่องว่างหรือขีด</p>
+  </form>
+
+  <section id="out" aria-live="polite"></section>
+
+  <footer>OnsiteGoFix</footer>
+</main>
+
+<script>
+  // วาง Web app URL ของ Apps Script (ลงท้ายด้วย /exec) ไว้ตรงนี้
+  // ถ้าเว้นว่าง หน้าเว็บจะทำงานในโหมดตัวอย่าง
+  // ถ้าหน้านี้เปิดจาก Apps Script โดยตรง ไม่ต้องใส่
+  const API_URL = '';
+
+  const STEPS = ['รับเรื่อง', 'ช่างรับงาน', 'กำลังซ่อม', 'เสร็จแล้ว'];
+
+  // ข้อมูลตัวอย่าง ใช้เฉพาะตอนยังไม่ได้เชื่อมกับชีต
+  const DEMO = {
+    '2601310877278': { caseId: '2601310877278', title: 'ป้ายภายนอกอาคาร ชำรุด หรือ มีสภาพเปลี่ยนไปจากเดิม', branch: 'ID1818 : BN-STA (Ton Tann Green Market)-Mueang-Khonkaen', category: 'ป้าย', sla: '21 วัน', status: 'รอช่างรับงาน', statusHelpdesk: 'กำลังดำเนินการ', requestedAt: '', acceptedAt: '', visitAt: '', doneAt: '' },
+    '2609270000001': { caseId: '2609270000001', title: 'แอร์ไม่เย็น หรือ เย็นน้อยกว่าปกติ', branch: 'ID459 : BN-Mega-Bangna', category: 'ด้านระบบเครื่องปรับอากาศ (แอร์)', sla: '7 วัน', status: 'กำลังดำเนินการ', statusHelpdesk: 'กำลังดำเนินการ', requestedAt: '2026-09-27T09:15:00', acceptedAt: '2026-09-27T13:02:00', visitAt: '2026-09-29T10:40:00', doneAt: '' },
+    '2603120938625': { caseId: '2603120938625', title: 'แอร์มีน้ำหยด / น้ำรั่ว', branch: 'ID2857 : BN-STA-Thanarat (Moosi)-Khaoyai', category: 'ด้านระบบเครื่องปรับอากาศ (แอร์)', sla: '7 วัน', status: 'ปิดงานซ่อม', statusHelpdesk: 'ปิด Case', requestedAt: '2026-03-12T10:26:00', acceptedAt: '', visitAt: '', doneAt: '' }
+  };
+
+  const hasGas = typeof google !== 'undefined' && google.script && google.script.run;
+  const MODE = hasGas ? 'gas' : (API_URL ? 'api' : 'demo');
+
+  const $ = (id) => document.getElementById(id);
+  const form = $('form'), input = $('q'), go = $('go'), err = $('err'), out = $('out');
+  let busy = false;
+
+  function el(tag, cls, text) {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+
+  function svg(path) {
+    const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    s.setAttribute('width', '16'); s.setAttribute('height', '16'); s.setAttribute('viewBox', '0 0 24 24');
+    s.setAttribute('fill', 'none'); s.setAttribute('stroke', 'currentColor'); s.setAttribute('stroke-width', '2.5');
+    s.setAttribute('stroke-linecap', 'round'); s.setAttribute('stroke-linejoin', 'round'); s.setAttribute('aria-hidden', 'true');
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', path);
+    s.appendChild(p);
+    return s;
+  }
+  const ICON_CHECK = 'M5 12l5 5l10 -10';
+
+  function fetchCase(id) {
+    if (MODE === 'gas') {
+      return new Promise((resolve, reject) =>
+        google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getCase(id));
+    }
+    if (MODE === 'api') {
+      return jsonp(API_URL + '?id=' + encodeURIComponent(id));
+    }
+    return new Promise((resolve) => setTimeout(() => {
+      resolve(DEMO[id] ? { ok: true, found: true, data: DEMO[id] } : { ok: true, found: false });
+    }, 350));
+  }
+
+  function jsonp(url) {
+    return new Promise((resolve, reject) => {
+      const cb = '__ogf' + Date.now() + Math.floor(Math.random() * 10000);
+      const s = document.createElement('script');
+      const timer = setTimeout(() => { cleanup(); reject(new Error('timeout')); }, 15000);
+      function cleanup() { clearTimeout(timer); try { delete window[cb]; } catch (e) { window[cb] = undefined; } s.remove(); }
+      window[cb] = (data) => { cleanup(); resolve(data); };
+      s.onerror = () => { cleanup(); reject(new Error('network')); };
+      s.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + cb;
+      document.head.appendChild(s);
+    });
+  }
+
+  // สถานะจากชีต: ใช้ "สถานะ (FixPro)" เป็นหลัก และ "สถานะ (Helpdesk)" ช่วยตัดสินว่าปิดงานแล้วหรือยัง
+  //   รอช่างรับงาน            → รับเรื่อง
+  //   รับงานซ่อม, รอดำเนินการ  → ช่างรับงาน
+  //   กำลังดำเนินการ          → กำลังซ่อม
+  //   ปิดงานซ่อม / ปิด Case / ดำเนินการเสร็จสิ้น → เสร็จแล้ว
+  function statusInfo(d) {
+    const fix = String(d.status || '').trim();
+    const hd = String(d.statusHelpdesk || '').trim();
+    const f = fix.toLowerCase(), h = hd.toLowerCase();
+    const DONE = /ปิด|เสร็จ|done|complete|closed/;
+    const CANCEL = /ยกเลิก|cancel/;
+    if (CANCEL.test(f) || CANCEL.test(h)) return { step: -1, label: CANCEL.test(f) ? fix : hd, tone: 'muted' };
+    let step, label = '';
+    if (DONE.test(f)) { step = 3; label = fix; }
+    else if (DONE.test(h)) { step = 3; label = hd; }
+    else if (/รอช่าง/.test(f)) step = 0;
+    else if (/รับงาน|รอดำเนินการ/.test(f)) step = 1;
+    else if (/กำลัง|ดำเนินการ|progress/.test(f)) step = 2;
+    else step = 0;
+    const tone = step === 3 ? 'ok' : step === 2 ? 'warn' : 'accent';
+    return { step, label: label || fix || hd || STEPS[step], tone };
+  }
+
+  function fmtDate(v, withTime) {
+    if (!v) return '';
+    const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(v);
+    if (!m) return String(v);
+    const d = new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0));
+    const date = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+    if (withTime && m[4] && !(m[4] === '00' && m[5] === '00')) return date + ' ' + m[4] + ':' + m[5] + ' น.';
+    return date;
+  }
+
+  function renderCase(d) {
+    const info = statusInfo(d);
+    const card = el('article', 'card');
+
+    const head = el('div', 'card-head');
+    const left = el('div');
+    left.appendChild(el('h2', 'title', d.title || 'งานซ่อม'));
+    left.appendChild(el('p', 'case', 'Case ' + d.caseId));
+    head.appendChild(left);
+    head.appendChild(el('span', 'badge t-' + info.tone, info.label));
+    card.appendChild(head);
+
+    if (info.step >= 0) {
+      const ol = el('ol', 'steps');
+      ol.setAttribute('aria-label', 'ขั้นตอน: ' + STEPS[info.step]);
+      STEPS.forEach((name, i) => {
+        const done = i < info.step || (info.step === 3 && i === 3);
+        const now = i === info.step && info.step !== 3;
+        const li = el('li', 'step' + (done ? ' done' : '') + (now ? ' now now-' + info.tone : ''));
+        const dot = el('span', 'dot');
+        if (done) dot.appendChild(svg(ICON_CHECK));
+        li.appendChild(dot);
+        li.appendChild(el('span', null, name));
+        if (now) li.setAttribute('aria-current', 'step');
+        ol.appendChild(li);
+      });
+      card.appendChild(ol);
+    } else {
+      card.appendChild(el('p', 'note', 'งานนี้ถูกยกเลิกแล้ว'));
+    }
+
+    const rows = [
+      ['สาขา', d.branch],
+      ['หมวด', d.category],
+      ['SLA', d.sla],
+      ['แจ้งเรื่อง', fmtDate(d.requestedAt, true)],
+      ['รับเรื่อง', fmtDate(d.acceptedAt, true)],
+      ['ช่างเข้าซ่อม', fmtDate(d.visitAt, true)],
+      ['ซ่อมเสร็จ', fmtDate(d.doneAt, true)]
+    ].filter((r) => r[1]);
+    if (rows.length) {
+      const dl = el('dl', 'meta');
+      rows.forEach(([k, v]) => {
+        const row = el('div');
+        row.appendChild(el('dt', null, k));
+        row.appendChild(el('dd', null, v));
+        dl.appendChild(row);
+      });
+      card.appendChild(dl);
+    }
+    return card;
+  }
+
+  function renderMessage(title, body, isError) {
+    const card = el('div', 'card empty');
+    const icon = el('div', 'empty-icon');
+    icon.appendChild(svg(isError ? 'M12 9v4 M12 16h.01 M10.24 3.957l-8.422 14.06a1.989 1.989 0 0 0 1.7 2.983h16.845a1.989 1.989 0 0 0 1.7 -2.983l-8.423 -14.06a1.989 1.989 0 0 0 -3.4 0z' : 'M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0 M21 21l-6 -6'));
+    card.appendChild(icon);
+    card.appendChild(el('h2', null, title));
+    card.appendChild(el('p', null, body));
+    return card;
+  }
+
+  function show(node) { out.replaceChildren(node); }
+
+  function setError(msg) {
+    err.textContent = msg;
+    input.setAttribute('aria-invalid', msg ? 'true' : 'false');
+  }
+
+  async function search(raw) {
+    const id = String(raw || '').replace(/[\s-]/g, '');
+    if (!id) { setError('ใส่เลข Case ก่อนนะ'); input.focus(); return; }
+    if (!/^\d{6,20}$/.test(id)) { setError('เลข Case ต้องเป็นตัวเลขเท่านั้น'); input.focus(); return; }
+    setError('');
+    if (busy) return;
+    busy = true;
+    go.setAttribute('aria-busy', 'true');
+    go.textContent = 'กำลังค้นหา…';
+    try {
+      const res = await fetchCase(id);
+      if (!res || !res.ok) {
+        setError('เลข Case ไม่ถูกต้อง ลองตรวจอีกครั้ง');
+        out.replaceChildren();
+      } else if (!res.found) {
+        show(renderMessage('ไม่พบเลข Case นี้', 'ตรวจตัวเลขอีกครั้ง ถ้าเพิ่งแจ้งซ่อม ข้อมูลอาจยังไม่เข้าระบบ'));
+      } else {
+        show(renderCase(res.data));
+      }
+      if (MODE !== 'gas') {
+        try { history.replaceState(null, '', '?case=' + id); } catch (e) {}
+      }
+    } catch (e) {
+      show(renderMessage('เชื่อมต่อระบบไม่ได้', 'ลองใหม่อีกครั้งในอีกสักครู่', true));
+    } finally {
+      busy = false;
+      go.removeAttribute('aria-busy');
+      go.textContent = 'ค้นหา';
+    }
+  }
+
+  form.addEventListener('submit', (e) => { e.preventDefault(); search(input.value); });
+  input.addEventListener('input', () => { if (err.textContent) setError(''); });
+
+  if (MODE === 'demo') {
+    const demo = $('demo');
+    demo.hidden = false;
+    demo.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-case]');
+      if (b) { input.value = b.dataset.case; search(b.dataset.case); }
+    });
+  }
+
+  // เปิดลิงก์แบบ ?case=เลขเคส แล้วค้นให้อัตโนมัติ
+  function startFrom(caseParam) {
+    if (caseParam) { input.value = caseParam; search(caseParam); }
+  }
+  if (MODE === 'gas' && google.script.url) {
+    google.script.url.getLocation((loc) => startFrom(loc.parameter && loc.parameter.case));
+  } else {
+    startFrom(new URLSearchParams(location.search).get('case'));
+  }
+</script>
+</body>
+</html>
